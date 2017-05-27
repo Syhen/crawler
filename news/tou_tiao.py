@@ -18,6 +18,8 @@ from collection.queue.redis_queue import RedisSetQueue
 
 class TouTiaoSpider(object):
     def __init__(self, server, key):
+        # TODO: add resume support
+        self.next_timestamp = 1495500000
         self.running = True
         self.downloader = Downloader(cookie_enable=True)
         self.data_queue = RedisSetQueue(server, key)
@@ -26,8 +28,8 @@ class TouTiaoSpider(object):
             'category': 'news_finance',
             'utm_source': 'toutiao',
             'widen': 1,
-            'max_behot_time': 0,
-            'max_behot_time_tmp': 0,
+            'max_behot_time': self.next_timestamp,
+            'max_behot_time_tmp': self.next_timestamp,
             'tadrequire': True,
             'as': '',
             'cp': ''
@@ -49,7 +51,11 @@ class TouTiaoSpider(object):
                 continue
             status = response.status
             if status >= 300:
-                self.downloader.reset_cookie(url=url)
+                try:
+                    self.downloader.reset_cookie(url=url)
+                except RuntimeError:
+                    self.downloader.reset_cookie()
+                    print self.next_timestamp
                 self.data_queue.push(item)
                 print 'forbidden', url, status
                 item = self.data_queue.pop()
@@ -88,11 +94,11 @@ class TouTiaoSpider(object):
             )
             self.data_queue.push(item)
         if 'next' in data:
-            next_timestamp = data['next']['max_behot_time']
+            self.next_timestamp = data['next']['max_behot_time']
         else:
             print 'no next'
-        self.query_params['max_behot_time'] = next_timestamp
-        self.query_params['max_behot_time_tmp'] = next_timestamp
+        self.query_params['max_behot_time'] = self.next_timestamp
+        self.query_params['max_behot_time_tmp'] = self.next_timestamp
 
     def stop(self):
         self.running = False

@@ -52,7 +52,10 @@ class Downloader(object):
             handlers.append(urllib2.HTTPCookieProcessor(cookie))
         opener = urllib2.build_opener(*tuple(handlers))
         if url:
-            opener.open(url)
+            try:
+                opener.open(url)
+            except Exception as e:
+                raise RuntimeError("error acc while download '%s', %s" % (url, e))
         return opener
 
     def reset_cookie(self, url=None):
